@@ -2,66 +2,117 @@ import streamlit as st
 from graphviz import Digraph
 import re
 
-st.set_page_config(layout="wide")  # Makes the app use the full width of the browser
+st.set_page_config(layout="wide", page_title="Process Flow Builder")
 
-st.title("Process Flow Generator with Decision Branches and Colors")
+st.markdown("""
+    <style>
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    .stTextArea textarea {
+        font-family: monospace;
+    }
+    .card {
+        background-color: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .header {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+    }
+    .example-box {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 6px;
+        font-family: monospace;
+        border: 1px solid #e0e0e0;
+    }
+    .node-key {
+        display: flex;
+        gap: 10px;
+        font-size: 0.9rem;
+        margin-top: 1rem;
+    }
+    .node-key span {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+        color: #fff;
+    }
+    .green { background-color: #60c172; }
+    .blue { background-color: #3a8ee6; }
+    .yellow { background-color: #f4b400; }
+    .red { background-color: #e85c5c; }
+    </style>
+""", unsafe_allow_html=True)
 
+st.title("Build Your Flow")
+st.caption("Create and manage your process flows with ease.")
+
+# Instructions + Example Side by Side
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="header">How to Write Your Process Flow</div>', unsafe_allow_html=True)
+    st.markdown("""
+    - Start by listing all the major steps in your process.  
+    - Use clear and concise language for each step.  
+    - Put each step on a new line in the 'Add Steps' box.  
+    - Specify the type of step (e.g., Action, Decision) for better visualization.  
+    - Don’t forget to include a 'Start' and 'End' point for your flow.
+    """)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col2:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="header">For Example</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="example-box">
+    1. Receive application form<br>
+    2. Check if application fee is paid<br>
+    DECISION: Is the application fee paid?<br>
+    CHOICE: Yes -> Proceed to document verification<br>
+    CHOICE: No -> Send fee reminder to applicant
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Input + Flow Preview Side by Side
 default_steps = """1. Receive application form
 2. Check if application fee is paid
 DECISION: Is the application fee paid?
 CHOICE: Yes -> Proceed to document verification
 CHOICE: No -> Send fee reminder to applicant
-3. Verify submitted documents
-DECISION: Are all required documents provided?
-CHOICE: Yes -> Schedule entrance exam
-CHOICE: No -> Request missing documents
-4. Conduct entrance exam
-DECISION: Did the applicant pass the exam?
-CHOICE: Yes -> Schedule interview
-CHOICE: No -> Notify applicant of rejection
-5. Conduct interview
-DECISION: Interview result?
-CHOICE: Pass -> Move to merit list evaluation
-CHOICE: Waitlist -> Place applicant on waitlist
-CHOICE: Fail -> Notify applicant of rejection
-6. Evaluate merit list
-DECISION: Is applicant on merit list?
-CHOICE: Yes -> Offer admission
-CHOICE: No -> Notify applicant of rejection
-7. Send admission offer
-DECISION: Did applicant accept offer?
-CHOICE: Yes -> Collect enrollment fee
-CHOICE: No -> Close application as declined
-8. Collect enrollment fee
-DECISION: Is enrollment fee paid?
-CHOICE: Yes -> Complete enrollment
-CHOICE: No -> Send payment reminder
-9. Complete enrollment
-10. Send welcome email
-11. Assign student ID
-12. Register for orientation
-13. End process
 """
 
-# Make two columns: left (1/3) for input, right (2/3) for diagram
-col1, col2 = st.columns([1, 2])
-
-with col1:
-    st.write("""
-    **Enter your process steps below:**  
-    - For decisions, use `DECISION: ...`  
-    - For choices, use `CHOICE: label -> outcome` right after a DECISION.
-    - Regular steps are just lines.
-
-    **Colors:**  
-    - Green: Start/End  
-    - Yellow: Decision  
-    - Blue: Normal step  
-    - Red: Rejection/Failure/No/Decline
+col3, col4 = st.columns([1, 2])
+with col3:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="header">Add Steps</div>', unsafe_allow_html=True)
+    st.markdown("""
+    Write out the steps of your flow below. Each step should be a single action or decision.  
+    New steps are added with a default type.
     """)
-    steps_input = st.text_area("Process Steps", height=700, value=default_steps)
-    generate = st.button("Generate Process Flow")
 
+    st.markdown("""
+    <div class="node-key">
+        <span class="green">Start/End</span>
+        <span class="blue">Action</span>
+        <span class="yellow">Decision</span>
+        <span class="red">Error</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    steps_input = st.text_area(" ", value=default_steps, height=400)
+    generate = st.button("Add Steps")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Parsing logic (unchanged)
 def parse_steps(lines):
     steps = []
     i = 0
@@ -85,7 +136,11 @@ def parse_steps(lines):
             i += 1
     return steps
 
-with col2:
+# Flow generator
+with col4:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="header">Flow Preview</div>', unsafe_allow_html=True)
+
     if 'steps_input' in locals() and (st.session_state.get('generate', False) or st.session_state.get('auto_generate', True)):
         if 'generate' in locals() and generate:
             st.session_state['auto_generate'] = True
@@ -101,7 +156,7 @@ with col2:
             if step["type"] == "action":
                 node_id = f"node{idx}"
                 text_lower = step["text"].lower()
-                if "start" in text_lower or "begin" in text_lower or "receive" in text_lower:
+                if "start" in text_lower or "receive" in text_lower:
                     color = "palegreen"
                 elif "end" in text_lower or "complete" in text_lower or "close" in text_lower:
                     color = "palegreen"
@@ -114,6 +169,7 @@ with col2:
                     dot.edge(prev_node, node_id)
                 node_count[0] += 1
                 return node_id
+
             elif step["type"] == "decision":
                 node_id = f"node{idx}"
                 dot.node(node_id, step["question"], shape="diamond", style="filled", fillcolor="khaki")
@@ -134,7 +190,11 @@ with col2:
                     dot.edge(node_id, choice_id, label=label)
                     node_count[0] += 1
                     last_ids.append(choice_id)
-                return last_ids[0]
+                if last_ids:
+                    return last_ids[0]
+                else:
+                    st.warning(f"No valid CHOICE found for decision: '{step['question']}'")
+                    return prev_node
 
         prev = None
         i = 0
@@ -145,10 +205,8 @@ with col2:
 
         svg_bytes = dot.pipe(format='svg')
         svg = svg_bytes.decode('utf-8')
-        st.caption("Diagram Preview")
         st.components.v1.html(svg, height=800, scrolling=True)
 
-        # Download button for SVG (works for PowerPoint, Lucidchart, Word, etc.)
         st.download_button(
             label="Download SVG Diagram",
             data=svg_bytes,
@@ -156,11 +214,4 @@ with col2:
             mime="image/svg+xml"
         )
 
-        st.write("""
-        **How to use the SVG:**
-        - Download the SVG file using the button above.
-        - You can drag and drop or insert the SVG into PowerPoint, Word, Lucidchart, Miro, or most modern diagram tools.
-        - In PowerPoint: Go to **Insert > Pictures > This Device...** and select your SVG file.
-        - In Lucidchart: Use **File > Import Diagram > Import SVG**.
-        - You can also open the SVG in a browser and copy-paste the image directly.
-        """)
+    st.markdown('</div>', unsafe_allow_html=True)
